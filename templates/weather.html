@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>天氣頁面</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f9;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        background-color: #333;
+        color: white;
+        padding: 10px 20px;
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      nav h1 {
+        font-size: 1.8rem;
+        margin: 0;
+      }
+      nav ul {
+        list-style: none;
+        display: flex;
+        padding: 0;
+        margin: 0;
+      }
+      nav ul li {
+        margin-left: 20px;
+      }
+      nav ul li a {
+        text-decoration: none;
+        color: white;
+        font-size: 1rem;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+      }
+      nav ul li a:hover {
+        background-color: #575757;
+      }
+
+      main {
+        width: 1000px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #f9f9f9;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 1rem;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background-color: #f4f4f9;
+      }
+
+      button {
+        padding: 10px 20px;
+        margin-top: 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <h1>天氣頁面</h1>
+        <ul>
+          <li><a href="/">查看溫度</a></li>
+          <li><a href="/weather">查看天氣</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main>
+      <h2>天氣資訊</h2>
+      <p>點擊按鈕以刷新天氣資訊。</p>
+
+      <!-- 表格區域 -->
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>星期</th>
+            <th>天氣</th>
+          </tr>
+        </thead>
+        <tbody id="weather-table-body">
+          <tr>
+            <td colspan="3">尚無資料</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 刷新按鈕 -->
+      <button id="refresh-button">刷新天氣資訊</button>
+    </main>
+
+    <script>
+      const tableBody = document.getElementById("weather-table-body");
+      const refreshButton = document.getElementById("refresh-button");
+
+      // 刷新表格內容
+      async function refreshWeatherData() {
+        try {
+          const response = await fetch("/get-weather-data");
+          if (!response.ok) {
+            throw new Error("無法獲取天氣資訊");
+          }
+          const data = await response.json();
+
+          // 清空表格
+          tableBody.innerHTML = "";
+
+          // 更新表格資料
+          if (data.length > 0) {
+            data.forEach((item) => {
+              const newRow = document.createElement("tr");
+
+              const dateCell = document.createElement("td");
+              dateCell.textContent = item.date;
+
+              const weekdayCell = document.createElement("td");
+              weekdayCell.textContent = item.weekday;
+
+              const weatherCell = document.createElement("td");
+              weatherCell.textContent = item.weather;
+
+              newRow.appendChild(dateCell);
+              newRow.appendChild(weekdayCell);
+              newRow.appendChild(weatherCell);
+
+              tableBody.appendChild(newRow);
+            });
+          } else {
+            // 如果沒有資料，顯示提示
+            tableBody.innerHTML = '<tr><td colspan="3">尚無資料</td></tr>';
+          }
+        } catch (error) {
+          console.error("刷新失敗:", error);
+          alert("無法刷新天氣資訊，請稍後再試。");
+        }
+      }
+
+      // 點擊按鈕時刷新資料
+      refreshButton.addEventListener("click", refreshWeatherData);
+    </script>
+  </body>
+</html>

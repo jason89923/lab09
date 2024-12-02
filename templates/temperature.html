@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>即時溫度顯示</title>
+    <script src="https://cdn.socket.io/3.1.3/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@2.0.0/dist/chartjs-plugin-streaming.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f9;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        background-color: #333;
+        color: white;
+        padding: 10px 20px;
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      nav h1 {
+        font-size: 1.8rem;
+        margin: 0;
+      }
+
+      nav ul {
+        list-style: none;
+        display: flex;
+        padding: 0;
+        margin: 0;
+      }
+
+      nav ul li {
+        margin-left: 20px;
+      }
+
+      nav ul li a {
+        text-decoration: none;
+        color: white;
+        font-size: 1rem;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+      }
+
+      nav ul li a:hover {
+        background-color: #575757;
+      }
+
+      .main-container {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .container {
+        flex: 2;
+        min-width: 300px;
+        margin: 10px;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+      }
+      .data-container {
+        flex: 1;
+        min-width: 300px;
+        margin: 10px;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+        overflow-y: auto;
+        max-height: calc(100vh - 120px);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+        font-size: 14px;
+      }
+      th {
+        background-color: #f4f4f9;
+        color: #333;
+      }
+      td {
+        color: #555;
+      }
+      tbody tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+      tbody tr:hover {
+        background-color: #f1f1f1;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <h1>即時溫度</h1>
+        <ul>
+          <li><a href="/">查看溫度</a></li>
+          <li><a href="/weather">查看天氣</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <div class="main-container">
+      <!-- 即時圖表區域 -->
+      <div class="container">
+        <h2 id="current-temperature">-- °C</h2>
+        <canvas id="temperature-chart"></canvas>
+      </div>
+
+      <!-- 資料庫內容顯示區域 -->
+      <div class="data-container">
+        <h2>資料庫內容</h2>
+        <p style="color: #a9a9a9; font-size: small">
+          最近更新時間: <span id="last-update-time">--</span>
+        </p>
+        <table id="database-table">
+          <thead>
+            <tr>
+              <th>時間</th>
+              <th>溫度 (°C)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="2">等待資料加載...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const temperatureElement = document.getElementById("current-temperature");
+      const lastUpdateTimeElement = document.getElementById("last-update-time");
+      const databaseTableBody = document.querySelector("#database-table tbody");
+      const ctx = document.getElementById("temperature-chart").getContext("2d");
+      let latestTemperature = null;
+
+      // 初始化 Chart.js 折線圖
+      const temperatureChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          datasets: [
+            {
+              label: "即時溫度 (°C)",
+              data: [],
+              borderColor: "rgba(75, 192, 192, 1)",
+              borderWidth: 2,
+              tension: 0.1,
+            },
+          ],
+        },
+        options: {
+          plugins: {
+            streaming: {
+              duration: 20000,
+              refresh: 1000,
+              onRefresh: function (chart) {
+                if (latestTemperature !== null) {
+                  chart.data.datasets[0].data.push({
+                    x: Date.now(),
+                    y: latestTemperature,
+                  });
+                }
+              },
+            },
+          },
+          scales: {
+            x: {
+              type: "realtime",
+              realtime: {
+                delay: 2000,
+              },
+              title: {
+                display: true,
+                text: "時間",
+              },
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "溫度 (°C)",
+              },
+            },
+          },
+        },
+      });
+
+      // 連接 WebSocket
+      const socket = io("http://127.0.0.1:5000", { transports: ["websocket"] });
+
+      // 接收即時溫度更新
+      socket.on("temperature_update", function (data) {
+        if (data.temperature !== undefined) {
+          latestTemperature = data.temperature;
+          temperatureElement.textContent = `${latestTemperature.toFixed(1)} °C`;
+        }
+      });
+
+      // 接收資料庫更新
+      socket.on("database_update", function (data) {
+        // 更新最近更新時間
+        lastUpdateTimeElement.textContent = data.last_update_time || "--";
+
+        // 清空表格
+        databaseTableBody.innerHTML = "";
+
+        // 將新數據填入表格
+        data.data.forEach((item) => {
+          const row = document.createElement("tr");
+
+          const timestampCell = document.createElement("td");
+          timestampCell.textContent = item.timestamp;
+
+          const temperatureCell = document.createElement("td");
+          temperatureCell.textContent = item.temperature;
+
+          row.appendChild(timestampCell);
+          row.appendChild(temperatureCell);
+
+          databaseTableBody.appendChild(row);
+        });
+      });
+    </script>
+  </body>
+</html>
