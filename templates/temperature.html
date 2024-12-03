@@ -213,13 +213,13 @@
       });
 
       // 連接 WebSocket
-      const socket = io("http://127.0.0.1:5000", { transports: ["websocket"] });
+      const socket = io("/", { transports: ["websocket"] });
 
       // 接收即時溫度更新
       socket.on("temperature_update", function (data) {
         if (data.temperature !== undefined) {
           latestTemperature = data.temperature;
-          temperatureElement.textContent = `${latestTemperature.toFixed(1)} °C`;
+          temperatureElement.textContent = `${latestTemperature} °C`;
         }
       });
 
@@ -236,7 +236,7 @@
           const row = document.createElement("tr");
 
           const timestampCell = document.createElement("td");
-          timestampCell.textContent = item.timestamp;
+          timestampCell.textContent = item.time;
 
           const temperatureCell = document.createElement("td");
           temperatureCell.textContent = item.temperature;

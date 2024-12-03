@@ -1,4 +1,0 @@
-CREATE TABLE data (
-    temperature REAL NOT NULL,
-    time TEXT PRIMARY KEY
-);
