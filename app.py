@@ -14,6 +14,35 @@ mock_database = []
 # 最近更新的時間
 last_update_time = None
 
+@app.route('get_temperature', methods=['POST'])
+def get_temperature_data():
+    global last_update_time
+    while True:
+        try:
+            temperature = request.get_json()
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # 當前時間
+
+            # 添加到模擬資料庫
+            mock_database.append({"time": timestamp, "temperature": temperature})
+
+            # 保留最近 10 筆數據
+            if len(mock_database) > 10:
+                mock_database.pop(0)
+
+            # 更新最近的資料庫更新時間
+            last_update_time = timestamp
+
+            # 廣播最新溫度和資料庫內容給所有客戶端
+            socketio.emit('temperature_update', {"temperature": temperature})
+            socketio.emit('database_update', {
+                "last_update_time": last_update_time,
+                "data": mock_database
+            })
+
+            time.sleep(1)  # 模擬數據生成間隔
+        except Exception as e:
+            print(f"資料生成錯誤: {e}")
+
 # 模擬生成即時溫度數據
 def generate_temperature_data():
     global last_update_time
