@@ -59,15 +59,18 @@ def start_server(host='127.0.0.1', port=8080):
                         print(f"Connection closed by {addr}")
                         break
                     # 顯示接收到的數據
-                    timestamp, received_data = data.decode('utf-8').split(',')
-                    print(f"Time: {timestamp}, Received: {received_data}")
-                    
-                    # 將數據插入 SQLite 資料庫
-                    cursor.execute('INSERT INTO temperature_table (time, temperature) VALUES (?, ?)', (timestamp, received_data))
-                    sql.commit()
-                    
-                    # 發送到 HTTP 伺服器
-                    send_to_http_server(received_data)
+                    try:
+                        timestamp, received_data = data.decode('utf-8').split(',')
+                        print(f"Time: {timestamp}, Received: {received_data}")
+                        
+                        # 將數據插入 SQLite 資料庫
+                        cursor.execute('INSERT INTO temperature_table (time, temperature) VALUES (?, ?)', (timestamp, received_data))
+                        sql.commit()
+                        
+                        # 發送到 HTTP 伺服器
+                        send_to_http_server(received_data)
+                    except:
+                        pass
 
 if __name__ == '__main__':
     
